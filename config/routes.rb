@@ -6,6 +6,7 @@ SampleApp::Application.routes.draw do
   # get "static_pages/contact"
   # match '/', to: 'static_pages#home', via: 'get'
   resources :users
+  resources :microposts, only:[:create,:destroy]
   resources :sessions, only:[:new,:create,:destroy]
   root 'static_pages#home'
   match '/signup',   to: 'users#new',             via: 'get'
