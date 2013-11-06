@@ -16,6 +16,13 @@ describe User do
 	it {should respond_to(:admin)}
 	it {should respond_to(:microposts)}
 	it {should respond_to(:feed)}
+	it {should respond_to(:relationships)}
+	it {should respond_to(:followed_users)}
+	it {should respond_to(:reverse_relationships)}
+	it {should respond_to(:followers)}
+	it {should respond_to(:following?)}
+	it {should respond_to(:follow!)}
+	it {should respond_to(:unfollow!)}
 
 	it {should be_valid}
 	it {should_not be_admin}
@@ -120,7 +127,15 @@ describe User do
 	end	
 
 	describe "micropost associations" do
-		before {@user.save}
+
+		let!(:other_user_1) {FactoryGirl.create(:user)}
+		let!(:other_user_2) {FactoryGirl.create(:user)}
+		before do
+			@user.save
+			@user.follow!(other_user_1)
+			@user.follow!(other_user_2)
+		end
+
 		let!(:older_micropost) do
 			FactoryGirl.create(:micropost,user:@user,created_at:1.day.ago)
 		end
@@ -141,16 +156,67 @@ describe User do
 			end
 		end 
 
+		it "should destroy associated relationships/reverse_relationships" do
+
+			relationships = @user.relationships.to_a
+			reverse_relationships = @user.relationships.to_a
+
+			@user.destroy
+			expect(relationships).not_to be_empty
+			expect(reverse_relationships).not_to be_empty
+			relationships.each do |relationship|
+				expect(Relationship.where(followed_id:relationship.followed_id)).to be_empty
+			end
+			reverse_relationships.each do |reverse_relationship|
+				expect(Relationship.where(follower_id:reverse_relationship.follower_id)).to be_empty
+			end
+		end
+
 		describe "status" do
 			let(:unfollowed_post) do
 				FactoryGirl.create(:micropost,user:FactoryGirl.create(:user))
+			end
+			let(:followed_user) {FactoryGirl.create(:user)}
+
+			before do
+				@user.follow!(followed_user)
+				3.times {followed_user.microposts.create!(content:"Lorem ipsum")}
 			end
 
 			its(:feed) {should include(newer_micropost)}
 			its(:feed) {should include(older_micropost)}
 			its(:feed) {should_not include(unfollowed_post)}
+			its(:feed) do
+				followed_user.microposts.each do |micropost|
+					should include(micropost)
+				end
+			end
+		end
+	end
+
+	describe "following" do
+		let(:other_user) {FactoryGirl.create(:user)}
+		before do
+			@user.save
+			@user.follow!(other_user)
+		end
+
+		it {should be_following(other_user)}
+		its(:followed_users) {should include(other_user)}
+
+		describe "followed user" do
+			subject {other_user}
+			its(:followers) {should include(@user)}
+		end
+
+		describe "and unfollowing" do
+			before {@user.unfollow!(other_user)}
+
+			it {should_not be_following(other_user)}
+			its(:followed_users) {should_not include(other_user)}
 		end
 	end
 end
+
 
 

@@ -5,9 +5,15 @@ SampleApp::Application.routes.draw do
   # get "static_pages/about"
   # get "static_pages/contact"
   # match '/', to: 'static_pages#home', via: 'get'
-  resources :users
+  resources :users do
+    member do
+      get :following, :followers
+    end
+  end
   resources :microposts, only:[:create,:destroy]
   resources :sessions, only:[:new,:create,:destroy]
+  resources :relationships, only:[:create,:destroy]
+  
   root 'static_pages#home'
   match '/signup',   to: 'users#new',             via: 'get'
   match '/signin',   to: 'sessions#new',          via: 'get'
